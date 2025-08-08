@@ -13,7 +13,6 @@ export const getCurrentLocation = async (): Promise<LocationData | null> => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     
     if (status !== 'granted') {
-      console.log('Permission to access location was denied');
       return null;
     }
 
@@ -33,7 +32,6 @@ export const getCurrentLocation = async (): Promise<LocationData | null> => {
     };
 
   } catch (error) {
-    console.error('Error getting location:', error);
     return null;
   }
 };
@@ -51,7 +49,7 @@ export const getLocationDescription = (latitude: number, longitude: number): str
   return mapToCampusLocation(latitude, longitude);
 };
 
-// Function to get a random campus location for testing
+// Function to get a random campus location
 export const getRandomCampusLocation = (): LocationData => {
   const randomLocation = CAMPUS_LOCATIONS[Math.floor(Math.random() * CAMPUS_LOCATIONS.length)];
   

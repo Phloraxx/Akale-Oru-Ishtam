@@ -52,7 +52,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         setProfiles(fetchedProfiles);
       }
     } catch (error) {
-      console.error('Error loading profiles:', error);
       // Fallback to mock profiles
       const mockProfiles = generateMockProfiles();
       setProfiles(mockProfiles);

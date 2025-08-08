@@ -13,6 +13,7 @@ import { ObjectCard } from '../components/ObjectCard';
 import { ObjectProfile } from '../types/ObjectProfile';
 import { APP_COLORS, ALL_VIBES } from '../utils/constants';
 import { getRandomCampusLocation } from '../services/locationService';
+import { saveObjectProfile } from '../services/supabaseClient';
 
 interface ProfileCreationScreenProps {
   navigation: any;
@@ -21,9 +22,7 @@ interface ProfileCreationScreenProps {
 export const ProfileCreationScreen: React.FC<ProfileCreationScreenProps> = ({ navigation }) => {
   const [profile, setProfile] = useState<Partial<ObjectProfile>>({
     name: '',
-    age: '',
     bio: '',
-    anthem: { title: '', artist: '' },
     passions: ['', '', '', ''],
     prompt: { question: '', answer: '' },
     imageUrl: 'https://picsum.photos/400/600?random=' + Math.floor(Math.random() * 100),
@@ -37,13 +36,6 @@ export const ProfileCreationScreen: React.FC<ProfileCreationScreenProps> = ({ na
 
   const updateProfile = (field: string, value: any) => {
     setProfile(prev => ({ ...prev, [field]: value }));
-  };
-
-  const updateAnthem = (field: 'title' | 'artist', value: string) => {
-    setProfile(prev => ({
-      ...prev,
-      anthem: { ...prev.anthem!, [field]: value }
-    }));
   };
 
   const updatePrompt = (field: 'question' | 'answer', value: string) => {
@@ -75,31 +67,45 @@ export const ProfileCreationScreen: React.FC<ProfileCreationScreenProps> = ({ na
     return true;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateProfile()) return;
 
     const finalProfile: ObjectProfile = {
       id: Date.now().toString(),
-      ...profile,
-    } as ObjectProfile;
+      name: profile.name!,
+      bio: profile.bio!,
+      passions: profile.passions || [],
+      prompt: profile.prompt || { question: '', answer: '' },
+      imageUrl: profile.imageUrl || '',
+      vibe: profile.vibe!,
+      location: profile.location || getRandomCampusLocation(),
+      createdAt: new Date(),
+      createdBy: 'manual'
+    };
 
-    // Here you would save to database
-    Alert.alert(
-      'Profile Saved! 🎉',
-      'Your manually created profile is ready to find love!',
-      [
-        { text: 'Create Another', onPress: () => resetForm() },
-        { text: 'View Home', onPress: () => navigation.navigate('Home') }
-      ]
-    );
+    try {
+      await saveObjectProfile(finalProfile);
+      Alert.alert(
+        'Profile Saved! 🎉',
+        'Your manually created profile is ready to find love!',
+        [
+          { text: 'Create Another', onPress: () => resetForm() },
+          { text: 'View Home', onPress: () => navigation.navigate('Home') }
+        ]
+      );
+    } catch (error) {
+      Alert.alert(
+        'Save Failed',
+        'Failed to save profile. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const resetForm = () => {
     setProfile({
       name: '',
-      age: '',
       bio: '',
-      anthem: { title: '', artist: '' },
       passions: ['', '', '', ''],
       prompt: { question: '', answer: '' },
       imageUrl: 'https://picsum.photos/400/600?random=' + Math.floor(Math.random() * 100),
@@ -120,7 +126,6 @@ export const ProfileCreationScreen: React.FC<ProfileCreationScreenProps> = ({ na
           <View style={styles.cardContainer}>
             <ObjectCard 
               profile={profile as ObjectProfile}
-              showActions={false}
             />
           </View>
 
@@ -168,17 +173,6 @@ export const ProfileCreationScreen: React.FC<ProfileCreationScreenProps> = ({ na
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Age</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., 5 years young, Timeless, Ancient..."
-              value={profile.age}
-              onChangeText={(value) => updateProfile('age', value)}
-              maxLength={30}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
             <Text style={styles.label}>Bio *</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
@@ -213,33 +207,6 @@ export const ProfileCreationScreen: React.FC<ProfileCreationScreenProps> = ({ na
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
-        </View>
-
-        {/* Anthem */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Anthem</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Song Title</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Good Vibes Only"
-              value={profile.anthem?.title}
-              onChangeText={(value) => updateAnthem('title', value)}
-              maxLength={50}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Artist</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Various Artists"
-              value={profile.anthem?.artist}
-              onChangeText={(value) => updateAnthem('artist', value)}
-              maxLength={50}
-            />
           </View>
         </View>
 

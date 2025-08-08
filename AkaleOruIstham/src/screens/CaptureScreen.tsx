@@ -17,9 +17,10 @@ import { LoadingProfile } from '../components/LoadingProfile';
 import { ObjectCard } from '../components/ObjectCard';
 import { generateObjectProfile } from '../services/aiService';
 import { getCurrentLocation, getRandomCampusLocation } from '../services/locationService';
-import { saveObjectProfile, testSupabaseConnection, runDetailedDiagnostics } from '../services/supabaseClient';
+import { saveObjectProfile } from '../services/supabaseClient';
 import { ObjectProfile } from '../types/ObjectProfile';
 import { APP_COLORS } from '../utils/constants';
+import { useAuth } from '../contexts/AuthContext';
 
 type CaptureStep = 'camera' | 'naming' | 'vibe' | 'loading' | 'preview';
 
@@ -30,6 +31,19 @@ export const CaptureScreen: React.FC = () => {
   const [selectedVibe, setSelectedVibe] = useState<string>('');
   const [generatedProfile, setGeneratedProfile] = useState<ObjectProfile | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Get user authentication
+  const { user, session, refreshSession } = useAuth();
+  
+  // Enhanced user validation that works with both Google and dev login
+  const isValidUser = user && (
+    // Real Google user has email
+    (user.email && user.email !== 'dev@example.com') ||
+    // Dev user has dev_mode flag
+    user.user_metadata?.dev_mode === true ||
+    // Anonymous user with valid session
+    (session && session.access_token)
+  );
 
   const handleImageCaptured = (imageUri: string) => {
     setCapturedImage(imageUri);
@@ -84,7 +98,7 @@ export const CaptureScreen: React.FC = () => {
           location,
           vibe,
           createdAt: new Date(),
-          createdBy: 'anonymous'
+          createdBy: user?.id || 'anonymous'  // Use authenticated user ID
         };
 
         setGeneratedProfile(fullProfile);
@@ -93,7 +107,6 @@ export const CaptureScreen: React.FC = () => {
         throw new Error('Failed to generate profile');
       }
     } catch (error) {
-      console.error('Error generating profile:', error);
       Alert.alert(
         'Generation Failed', 
         'Failed to create profile. Please try again.',
@@ -105,31 +118,30 @@ export const CaptureScreen: React.FC = () => {
   const handleSaveProfile = async () => {
     if (!generatedProfile) return;
 
+    // Check if user is authenticated (works for both Google and dev login)
+    if (!isValidUser) {
+      Alert.alert(
+        'Authentication Required',
+        'You need to be logged in to save profiles. Please log in and try again.',
+        [
+          { text: 'Refresh Session', onPress: async () => {
+            try {
+              await refreshSession();
+            } catch (error) {
+              // Session refresh failed silently
+            }
+          }},
+          { text: 'Save Without Image', onPress: saveWithoutImage },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
+      return;
+    }
+
     try {
       setIsSaving(true);
       
-      // Test Supabase connection first
-      const connectionTest = await testSupabaseConnection();
-      if (!connectionTest.success) {
-        Alert.alert(
-          'Connection Error',
-          `Supabase connection failed: ${connectionTest.message}`,
-          [
-            { text: 'Save Without Image', onPress: () => saveWithoutImage() },
-            { text: 'Cancel', style: 'cancel' }
-          ]
-        );
-        return;
-      }
-      
-      // Show progress to user
-      Alert.alert(
-        'Uploading Image',
-        'Please wait while we upload your object\'s photo...',
-        [],
-        { cancelable: false }
-      );
-      
+      // Save the profile directly
       const success = await saveObjectProfile(generatedProfile, capturedImage);
       
       if (success) {
@@ -150,7 +162,6 @@ export const CaptureScreen: React.FC = () => {
         );
       }
     } catch (error) {
-      console.error('Error saving profile:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
       Alert.alert(
@@ -188,7 +199,6 @@ export const CaptureScreen: React.FC = () => {
         Alert.alert('Save Failed', 'Failed to save profile. Please try again later.');
       }
     } catch (error) {
-      console.error('Error saving profile without image:', error);
       Alert.alert('Save Failed', 'Failed to save profile. Please try again later.');
     } finally {
       setIsSaving(false);
@@ -314,49 +324,6 @@ export const CaptureScreen: React.FC = () => {
             </View>
 
             <View style={styles.previewActions}>
-              <TouchableOpacity 
-                style={styles.retryButton}
-                onPress={() => setCurrentStep('vibe')}
-              >
-                <Text style={styles.retryButtonText}>↻ Regenerate</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.retryButton, { backgroundColor: '#333' }]}
-                onPress={async () => {
-                  try {
-                    Alert.alert(
-                      'Running Diagnostics...',
-                      'Please wait while we check your Supabase setup.',
-                      [],
-                      { cancelable: false }
-                    );
-                    
-                    const diagnostics = await runDetailedDiagnostics();
-                    
-                    Alert.alert(
-                      'Detailed Diagnostics',
-                      diagnostics,
-                      [
-                        { text: 'Copy to Clipboard', onPress: () => {
-                          // In a real app, you'd use Clipboard API
-                          console.log('DIAGNOSTICS REPORT:\n', diagnostics);
-                        }},
-                        { text: 'OK' }
-                      ]
-                    );
-                  } catch (error) {
-                    Alert.alert(
-                      'Diagnostics Failed',
-                      `Error running diagnostics: ${error}`,
-                      [{ text: 'OK' }]
-                    );
-                  }
-                }}
-              >
-                <Text style={styles.retryButtonText}>� Full Diagnostics</Text>
-              </TouchableOpacity>
-
               <TouchableOpacity 
                 style={[
                   styles.saveButton,
@@ -501,25 +468,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   previewActions: {
-    flexDirection: 'row',
-    gap: 8,
     paddingTop: 16,
-    flexWrap: 'wrap',
-  },
-  retryButton: {
-    flex: 1,
-    minWidth: 100,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: APP_COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  retryButtonText: {
-    fontSize: 16,
-    color: APP_COLORS.primary,
-    fontWeight: '600',
   },
   saveButton: {
     width: '100%',

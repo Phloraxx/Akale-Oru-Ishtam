@@ -24,12 +24,6 @@ const Stack = createStackNavigator();
 const AppNavigator: React.FC = () => {
   const { user, loading } = useAuth();
 
-  console.log('AppNavigator render:', { 
-    loading, 
-    hasUser: !!user, 
-    userEmail: user?.email 
-  });
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>

@@ -45,7 +45,6 @@ export const CameraView: React.FC<CameraViewProps> = ({
         });
         setCapturedImage(photo.uri);
       } catch (error) {
-        console.error('Error taking picture:', error);
         Alert.alert('Error', 'Failed to take picture. Please try again.');
       }
     }
@@ -71,7 +70,6 @@ export const CameraView: React.FC<CameraViewProps> = ({
         setCapturedImage(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
       Alert.alert('Error', 'Failed to select image. Please try again.');
     }
   };

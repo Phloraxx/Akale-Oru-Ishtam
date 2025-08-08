@@ -14,8 +14,6 @@ interface AuthContextType {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  // Development bypass
-  devSignIn: () => Promise<void>;
   // Force refresh session
   refreshSession: () => Promise<void>;
 }
@@ -63,25 +61,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       
-      // Check if Supabase is properly configured
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // More robust redirect URL handling
+      let redirectUrl: string;
       
-      // For mobile platforms (React Native/Expo), use a different approach
-      const redirectUrl = AuthSession.makeRedirectUri({
-        scheme: 'akale-oru-istham',
-        path: 'auth',
-      });
+      if (__DEV__) {
+        // For Expo Go development
+        redirectUrl = AuthSession.makeRedirectUri({
+          scheme: 'exp',
+          preferLocalhost: true,
+        });
+      } else {
+        // For production builds
+        redirectUrl = 'akale-oru-istham://auth';
+      }
 
-      // For development in Expo Go, we need to use the Expo redirect URL
-      const isExpoGo = __DEV__ && redirectUrl.includes('exp://');
-      const finalRedirectUrl = isExpoGo 
-        ? redirectUrl 
-        : 'akale-oru-istham://auth';
+      console.log('🔗 Using redirect URL:', redirectUrl);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: finalRedirectUrl,
+          redirectTo: redirectUrl,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -90,56 +89,69 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       if (error) {
-        throw error;
+        console.error('❌ OAuth setup error:', error);
+        throw new Error(`OAuth setup failed: ${error.message}`);
       }
 
-      // Open the OAuth URL
-      if (data.url) {
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          finalRedirectUrl
-        );
-
-        if (result.type === 'success' && result.url) {
-          // For Supabase OAuth, the tokens are in the fragment, not query params
-          const url = new URL(result.url);
-          let accessToken = url.searchParams.get('access_token');
-          let refreshToken = url.searchParams.get('refresh_token');
-          
-          // If not in query params, check the hash fragment
-          if (!accessToken && url.hash) {
-            const hashParams = new URLSearchParams(url.hash.substring(1));
-            accessToken = hashParams.get('access_token');
-            refreshToken = hashParams.get('refresh_token');
-          }
-
-          if (accessToken) {
-            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken || '',
-            });
-
-            if (sessionError) {
-              throw sessionError;
-            }
-            
-            // Manually update the context state to ensure immediate UI update
-            if (sessionData.session) {
-              setSession(sessionData.session);
-              setUser(sessionData.session.user);
-            }
-          } else {
-            throw new Error('No access token received from authentication');
-          }
-        } else if (result.type === 'cancel') {
-          throw new Error('Authentication was cancelled');
-        } else {
-          throw new Error('Authentication failed');
+      if (!data.url) {
+        throw new Error('No OAuth URL received from Supabase. Check your Google provider configuration in Supabase dashboard.');
+      }
+      
+      console.log('🚀 Opening OAuth URL:', data.url);
+      
+      // Open the OAuth URL with better error handling
+      const result = await WebBrowser.openAuthSessionAsync(
+        data.url,
+        redirectUrl,
+        {
+          showInRecents: true,
         }
+      );
+
+      console.log('📱 Auth session result:', result);
+
+      if (result.type === 'success' && result.url) {
+        // Parse tokens from the result URL
+        const url = new URL(result.url);
+        
+        // Check both query params and hash fragment for tokens
+        let accessToken = url.searchParams.get('access_token');
+        let refreshToken = url.searchParams.get('refresh_token');
+        
+        if (!accessToken && url.hash) {
+          const hashParams = new URLSearchParams(url.hash.substring(1));
+          accessToken = hashParams.get('access_token');
+          refreshToken = hashParams.get('refresh_token');
+        }
+
+        if (accessToken) {
+          console.log('✅ Tokens received, creating session...');
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || '',
+          });
+
+          if (sessionError) {
+            console.error('❌ Session creation error:', sessionError);
+            throw new Error(`Failed to create session: ${sessionError.message}`);
+          }
+          
+          if (sessionData.session) {
+            setSession(sessionData.session);
+            setUser(sessionData.session.user);
+            console.log('🎉 Authentication successful!');
+          }
+        } else {
+          throw new Error('Authentication completed but no tokens received');
+        }
+      } else if (result.type === 'cancel') {
+        throw new Error('Authentication was cancelled by user');
       } else {
-        throw new Error('No OAuth URL received from Supabase');
+        console.error('❌ Authentication failed:', result);
+        throw new Error(`Authentication failed with result: ${result.type}`);
       }
     } catch (error) {
+      console.error('🚨 Google Sign-In Error:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -153,39 +165,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (error) {
         throw error;
       }
-    } catch (error) {
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Development bypass - creates a fake user session for testing
-  const devSignIn = async () => {
-    try {
-      setLoading(true);
-      // Create a mock user for development
-      const mockUser = {
-        id: 'dev-user-123',
-        email: 'dev@example.com',
-        user_metadata: { name: 'Development User' },
-        app_metadata: {},
-        aud: 'authenticated',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as User;
-      
-      const mockSession = {
-        access_token: 'dev-token',
-        refresh_token: 'dev-refresh',
-        expires_in: 3600,
-        expires_at: Date.now() + 3600000,
-        token_type: 'bearer',
-        user: mockUser,
-      } as Session;
-
-      setUser(mockUser);
-      setSession(mockSession);
     } catch (error) {
       throw error;
     } finally {
@@ -216,7 +195,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     signInWithGoogle,
     signOut,
-    devSignIn,
     refreshSession,
   };
 

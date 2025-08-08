@@ -10,13 +10,12 @@ import {
   Dimensions,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase, runDetailedDiagnostics } from '../services/supabaseClient';
 import { APP_COLORS } from '../utils/constants';
 
 const { width, height } = Dimensions.get('window');
 
 export const LoginScreen: React.FC = () => {
-  const { signInWithGoogle, loading, devSignIn, refreshSession } = useAuth();
+  const { signInWithGoogle, loading } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   const handleGoogleSignIn = async () => {
@@ -27,21 +26,6 @@ export const LoginScreen: React.FC = () => {
       Alert.alert(
         'Authentication Error',
         error.message || 'Failed to sign in with Google. Please try again.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
-
-  const handleDevSignIn = async () => {
-    try {
-      setIsSigningIn(true);
-      await devSignIn();
-    } catch (error: any) {
-      Alert.alert(
-        'Dev Sign In Error',
-        error.message || 'Failed to sign in with development user.',
         [{ text: 'OK' }]
       );
     } finally {
@@ -71,9 +55,15 @@ export const LoginScreen: React.FC = () => {
 
       {/* Main Content */}
       <View style={styles.content}>
+        {/* Features */}
+        <View style={styles.featuresContainer}>
+          <FeatureItem emoji="📸" text="Capture objects around you" />
+          <FeatureItem emoji="🤖" text="AI generates unique personalities" />
+          <FeatureItem emoji="💕" text="Swipe to find perfect matches" />
+          <FeatureItem emoji="💬" text="Chat with object personalities" />
+        </View>
 
-
-        {/* Login Section - moved inside content */}
+        {/* Login Section */}
         <View style={styles.loginSection}>
           <Text style={styles.loginTitle}>Ready to start swiping?</Text>
           <Text style={styles.loginSubtitle}>
@@ -98,78 +88,6 @@ export const LoginScreen: React.FC = () => {
                 <Text style={styles.googleButtonText}>Continue with Google</Text>
               </>
             )}
-          </TouchableOpacity>
-
-          {/* Temporary development button */}
-          <TouchableOpacity
-            style={[styles.googleButton, { backgroundColor: '#4CAF50', marginTop: 8 }]}
-            onPress={handleDevSignIn}
-            disabled={isSigningIn}
-          >
-            {isSigningIn ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Text style={styles.googleButtonText}>� Dev: Sign In (Testing)</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Debug button */}
-          <TouchableOpacity
-            style={[styles.googleButton, { backgroundColor: '#333', marginTop: 8 }]}
-            onPress={async () => {
-              try {
-                const { data, error } = await supabase.auth.getSession();
-                Alert.alert(
-                  'Supabase Status',
-                  `Connection: ${error ? 'Failed' : 'Success'}\nSession: ${data.session ? 'Active' : 'None'}\nUser: ${data.session?.user?.email || 'None'}\nError: ${error?.message || 'None'}`,
-                  [
-                    { text: 'OK' },
-                    { text: 'Refresh Session', onPress: () => refreshSession() }
-                  ]
-                );
-              } catch (error: any) {
-                Alert.alert(
-                  'Supabase Status',
-                  `Connection Failed: ${error.message}`,
-                  [{ text: 'OK' }]
-                );
-              }
-            }}
-          >
-            <Text style={styles.googleButtonText}>🔍 Check Status & Refresh</Text>
-          </TouchableOpacity>
-
-          {/* Detailed Diagnostics button */}
-          <TouchableOpacity
-            style={[styles.googleButton, { backgroundColor: '#FF6B35', marginTop: 8 }]}
-            onPress={async () => {
-              try {
-                Alert.alert(
-                  'Running Full Diagnostics...',
-                  'This will test all Supabase connections and storage setup.',
-                  [],
-                  { cancelable: false }
-                );
-                
-                const diagnostics = await runDetailedDiagnostics();
-                
-                Alert.alert(
-                  'Full Supabase Diagnostics',
-                  diagnostics,
-                  [
-                    { text: 'OK' }
-                  ]
-                );
-              } catch (error: any) {
-                Alert.alert(
-                  'Diagnostics Failed',
-                  `Error: ${error.message}`,
-                  [{ text: 'OK' }]
-                );
-              }
-            }}
-          >
-            <Text style={styles.googleButtonText}>🔧 Full Storage Diagnostics</Text>
           </TouchableOpacity>
 
           <Text style={styles.disclaimer}>
@@ -246,20 +164,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     justifyContent: 'space-between',
-  },
-  illustrationContainer: {
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  illustration: {
-    fontSize: 40,
-    marginBottom: 12,
-  },
-  illustrationText: {
-    fontSize: 16,
-    color: APP_COLORS.text,
-    textAlign: 'center',
-    lineHeight: 22,
   },
   featuresContainer: {
     gap: 12,
