@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   SafeAreaView,
   Switch
 } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
+import { getUserProfiles } from '../services/supabaseClient';
 import { APP_COLORS } from '../utils/constants';
 
 interface SettingsScreenProps {
@@ -16,6 +18,8 @@ interface SettingsScreenProps {
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
+  const { user, signOut } = useAuth();
+  const [userProfileCount, setUserProfileCount] = useState(0);
   const [settings, setSettings] = useState({
     notifications: true,
     locationServices: true,
@@ -24,6 +28,38 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
     autoSwipe: false,
     darkMode: false
   });
+
+  useEffect(() => {
+    loadUserStats();
+  }, []);
+
+  const loadUserStats = async () => {
+    if (user) {
+      const profiles = await getUserProfiles(user.id);
+      setUserProfileCount(profiles.length);
+    }
+  };
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Sign Out', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const updateSetting = (key: string, value: boolean) => {
     setSettings(prev => ({ ...prev, [key]: value }));
@@ -151,6 +187,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
         <View style={styles.header}>
           <Text style={styles.title}>Settings</Text>
           <Text style={styles.subtitle}>Customize your Akale Oru Istham experience</Text>
+          
+          {/* User Info Card */}
+          <View style={styles.userCard}>
+            <Text style={styles.userEmail}>{user?.email}</Text>
+            <Text style={styles.userStats}>
+              You've created {userProfileCount} object profile{userProfileCount !== 1 ? 's' : ''}
+            </Text>
+          </View>
         </View>
 
         {settingSections.map((section) => (
@@ -189,6 +233,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             >
               <Text style={[styles.actionButtonText, styles.destructiveText]}>🗑️ Clear All Data</Text>
               <Text style={[styles.actionButtonSubtext, styles.destructiveText]}>Delete all profiles and history</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.destructiveButton]}
+              onPress={handleSignOut}
+            >
+              <Text style={[styles.actionButtonText, styles.destructiveText]}>🚪 Sign Out</Text>
+              <Text style={[styles.actionButtonSubtext, styles.destructiveText]}>Sign out of your account</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -241,6 +293,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: APP_COLORS.textSecondary,
     textAlign: 'center',
+    marginBottom: 16,
+  },
+  userCard: {
+    backgroundColor: APP_COLORS.surface,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  userEmail: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: APP_COLORS.text,
+    marginBottom: 4,
+  },
+  userStats: {
+    fontSize: 14,
+    color: APP_COLORS.textSecondary,
   },
   section: {
     marginBottom: 24,

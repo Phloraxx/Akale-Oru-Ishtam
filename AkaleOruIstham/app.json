@@ -8,6 +8,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "description": "A social discovery platform for lonely inanimate objects",
+    "scheme": "akale-oru-istham",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -18,6 +19,7 @@
     ],
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.akaleoru.istham",
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to camera to capture photos of objects for profile creation.",
         "NSLocationWhenInUseUsageDescription": "This app needs access to location to find objects near your campus location.",
@@ -25,6 +27,7 @@
       }
     },
     "android": {
+      "package": "com.akaleoru.istham",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FF6B6B"

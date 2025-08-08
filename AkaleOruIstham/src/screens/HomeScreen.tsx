@@ -11,6 +11,7 @@ import {
 import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ObjectCard } from '../components/ObjectCard';
 import { getObjectProfiles } from '../services/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 import { ObjectProfile } from '../types/ObjectProfile';
 import { APP_COLORS } from '../utils/constants';
 
@@ -23,6 +24,7 @@ const SWIPE_THRESHOLD = width * 0.3;
 const CARD_MARGIN = 10;
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
+  const { user } = useAuth();
   const [profiles, setProfiles] = useState<ObjectProfile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -64,9 +66,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       {
         id: '1',
         name: 'Sitara the Supportive',
-        age: '5 years young',
         bio: 'Been holding it down since 2019. Great at supporting others, literally. Looking for someone who appreciates stability.',
-        anthem: { title: 'Lean On Me', artist: 'Bill Withers' },
         passions: ['Supporting dreams', 'People watching', 'Posture improvement', 'Silent comfort'],
         prompt: { 
           question: 'What\'s your love language?', 
@@ -81,9 +81,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       {
         id: '2',
         name: 'Paige Turner',
-        age: 'Timeless',
         bio: 'Full of stories and always ready to share. I\'ve got depth, plot twists, and a great cover.',
-        anthem: { title: 'Story of My Life', artist: 'One Direction' },
         passions: ['Character development', 'Plot twists', 'Late night reading', 'Bookmarks'],
         prompt: { 
           question: 'What\'s your ideal Sunday?', 
@@ -98,9 +96,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       {
         id: '3',
         name: 'Brew the Energetic',
-        age: 'Fresh daily',
         bio: 'I wake people up and make their day better. Always hot, never bitter. Swipe right for good vibes!',
-        anthem: { title: 'Good Morning', artist: 'Kanye West' },
         passions: ['Morning routines', 'Productivity', 'Warmth', 'Caffeine delivery'],
         prompt: { 
           question: 'What makes you irresistible?', 
@@ -244,11 +240,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           }}
         >
           <Animated.View style={[styles.cardContainer, animatedStyle]}>
-            <ObjectCard
-              profile={profile}
-              onSwipeLeft={handleSwipeLeft}
-              onSwipeRight={handleSwipeRight}
-            />
+            <ObjectCard profile={profile} />
           </Animated.View>
         </PanGestureHandler>
       );
@@ -265,10 +257,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
       return (
         <Animated.View key={profile.id} style={[styles.cardContainer, styles.nextCard, animatedStyle]}>
-          <ObjectCard
-            profile={profile}
-            showActions={false}
-          />
+          <ObjectCard profile={profile} />
         </Animated.View>
       );
     }
@@ -313,6 +302,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Akale Oru Istham</Text>
         <Text style={styles.headerSubtitle}>Discover objects waiting for love</Text>
+        {user && (
+          <TouchableOpacity 
+            style={styles.userBadge}
+            onPress={() => navigation.navigate('Settings')}
+          >
+            <Text style={styles.userBadgeText}>👤 {user.email?.split('@')[0]}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.cardStack}>
@@ -336,6 +333,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           onPress={loadProfiles}
         >
           <Text style={styles.footerButtonText}>↻</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.footerButton}
+          onPress={() => navigation.navigate('Settings')}
+        >
+          <Text style={styles.footerButtonText}>⚙️</Text>
         </TouchableOpacity>
       </View>
 
@@ -370,6 +374,18 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 16,
     color: APP_COLORS.textSecondary,
+  },
+  userBadge: {
+    marginTop: 8,
+    backgroundColor: APP_COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  userBadgeText: {
+    fontSize: 14,
+    color: 'white',
+    fontWeight: '500',
   },
   cardStack: {
     flex: 1,
@@ -432,7 +448,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingBottom: 40,
-    gap: 40,
+    gap: 30,
   },
   footerButton: {
     width: 60,
