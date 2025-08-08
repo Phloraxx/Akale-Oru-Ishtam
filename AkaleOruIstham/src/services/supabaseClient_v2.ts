@@ -20,7 +20,7 @@ export const getCurrentUser = async () => {
   return user;
 };
 
-// Alternative upload function with fallback methods
+// Fixed upload function using fetch to properly read file data
 export const uploadObjectImage = async (imageUri: string, objectId: string): Promise<string | null> => {
   try {
     console.log('🖼️ Starting image upload...', { imageUri: imageUri.substring(0, 50) + '...', objectId });
@@ -74,8 +74,8 @@ export const uploadObjectImage = async (imageUri: string, objectId: string): Pro
         throw new Error('Image file is empty');
       }
       
-      if (fileData.size > 10 * 1024 * 1024) { // Reduced to 10MB for base64 storage
-        throw new Error('Image file is too large (max 10MB for base64 storage)');
+      if (fileData.size > 50 * 1024 * 1024) { // 50MB limit
+        throw new Error('Image file is too large (max 50MB)');
       }
       
       console.log('✅ File successfully read and validated');
@@ -84,83 +84,49 @@ export const uploadObjectImage = async (imageUri: string, objectId: string): Pro
       console.error('❌ Failed to read file with fetch:', fetchError);
       throw new Error(`Cannot read file: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
     }
-
-    // Try Supabase Storage first, then fallback to base64
-    console.log('🔄 Attempting Supabase Storage upload...');
     
-    try {
-      const timestamp = Date.now();
-      const fileExtension = contentType.includes('png') ? 'png' : 'jpg';
-      const fileName = `object-${objectId}-${timestamp}.${fileExtension}`;
-      const filePath = `public/${fileName}`;
-      
-      console.log('📂 Upload path:', filePath);
+    const timestamp = Date.now();
+    const fileExtension = contentType.includes('png') ? 'png' : 'jpg';
+    const fileName = `object-${objectId}-${timestamp}.${fileExtension}`;
+    const filePath = `public/${fileName}`;
+    
+    console.log('📂 Upload path:', filePath);
+    console.log('📤 About to upload file - size:', fileData.size, 'type:', contentType);
 
-      const { data: uploadData, error: uploadError } = await supabase
-        .storage
-        .from('object-images')
-        .upload(filePath, fileData, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: contentType,
-        });
+    // Upload to Supabase Storage
+    console.log('⬆️ Uploading to Supabase storage...');
+    const { data, error } = await supabase
+      .storage
+      .from('object-images')
+      .upload(filePath, fileData, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: contentType,
+      });
 
-      if (!uploadError && uploadData) {
-        console.log('✅ Supabase Storage upload successful:', uploadData);
-        
-        // Get the public URL
-        const { data: publicUrlData } = supabase.storage
-          .from('object-images')
-          .getPublicUrl(filePath);
-
-        const publicUrl = publicUrlData.publicUrl;
-        console.log('🌐 Public URL generated:', publicUrl);
-        return publicUrl;
-      } else {
-        throw new Error(uploadError?.message || 'Supabase storage failed');
-      }
-      
-    } catch (storageError) {
-      console.warn('⚠️ Supabase Storage failed, using fallback method:', storageError);
-      
-      // Fallback Method 1: Convert to base64 and store as data URL
-      console.log('📦 Converting to base64 data URL...');
-      
-      try {
-        // Convert blob to base64
-        const reader = new FileReader();
-        const base64Promise = new Promise<string>((resolve, reject) => {
-          reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result);
-          };
-          reader.onerror = () => reject(new Error('Failed to convert to base64'));
-        });
-        
-        reader.readAsDataURL(fileData);
-        const dataUrl = await base64Promise;
-        
-        console.log('✅ Base64 conversion successful, length:', dataUrl.length);
-        
-        // Store the base64 data URL directly
-        return dataUrl;
-        
-      } catch (base64Error) {
-        console.error('❌ Base64 conversion failed:', base64Error);
-        
-        // Fallback Method 2: Use a placeholder image
-        console.log('🖼️ Using placeholder image...');
-        return 'https://via.placeholder.com/400x600/6366f1/ffffff?text=Object+Photo';
-      }
+    if (error) {
+      console.error('❌ Upload error:', error);
+      throw new Error(`Upload failed: ${error.message}`);
     }
+    
+    console.log('✅ Upload successful:', data);
+
+    // Get the public URL
+    const { data: publicUrlData } = supabase.storage
+      .from('object-images')
+      .getPublicUrl(filePath);
+
+    const publicUrl = publicUrlData.publicUrl;
+    console.log('🌐 Public URL generated:', publicUrl);
+
+    return publicUrl;
   } catch (error) {
-    console.error('🚨 All image upload methods failed:', error);
-    // Return a placeholder instead of null to keep the app working
-    return 'https://via.placeholder.com/400x600/6366f1/ffffff?text=Photo+Error';
+    console.error('🚨 Image upload failed:', error);
+    return null;
   }
 };
 
-// Enhanced saveObjectProfile with better fallback handling
+// Enhanced saveObjectProfile with better error handling and logging
 export const saveObjectProfile = async (
   profile: ObjectProfile, 
   localImageUri?: string,
@@ -181,10 +147,13 @@ export const saveObjectProfile = async (
       
       if (uploadedUrl) {
         imageUrl = uploadedUrl;
-        console.log('✅ Image processed successfully. Type:', uploadedUrl.startsWith('data:') ? 'Base64 Data URL' : 'Storage URL');
+        console.log('✅ Image uploaded successfully:', uploadedUrl);
       } else {
-        console.warn('⚠️ Image upload returned null - using placeholder');
-        imageUrl = 'https://via.placeholder.com/400x600/6366f1/ffffff?text=No+Image';
+        console.warn('⚠️ Image upload failed');
+        if (!options.allowImageUploadFailure) {
+          throw new Error('Image upload failed');
+        }
+        console.log('📝 Continuing without image due to allowImageUploadFailure option');
       }
     }
     
@@ -207,7 +176,6 @@ export const saveObjectProfile = async (
     console.log('📄 Database record prepared:', { 
       name: dbRecord.name, 
       hasImage: !!dbRecord.image_url,
-      imageType: dbRecord.image_url?.startsWith('data:') ? 'base64' : 'url',
       createdBy: dbRecord.created_by 
     });
 
