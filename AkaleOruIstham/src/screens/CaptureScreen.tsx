@@ -8,7 +8,8 @@ import {
   Alert,
   SafeAreaView,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  ActivityIndicator
 } from 'react-native';
 import { CameraView } from '../components/CameraView';
 import { VibeSelector } from '../components/VibeSelector';
@@ -16,7 +17,7 @@ import { LoadingProfile } from '../components/LoadingProfile';
 import { ObjectCard } from '../components/ObjectCard';
 import { generateObjectProfile } from '../services/aiService';
 import { getCurrentLocation, getRandomCampusLocation } from '../services/locationService';
-import { saveObjectProfile } from '../services/supabaseClient';
+import { saveObjectProfile, testSupabaseConnection, runDetailedDiagnostics } from '../services/supabaseClient';
 import { ObjectProfile } from '../types/ObjectProfile';
 import { APP_COLORS } from '../utils/constants';
 
@@ -28,6 +29,7 @@ export const CaptureScreen: React.FC = () => {
   const [objectName, setObjectName] = useState<string>('');
   const [selectedVibe, setSelectedVibe] = useState<string>('');
   const [generatedProfile, setGeneratedProfile] = useState<ObjectProfile | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleImageCaptured = (imageUri: string) => {
     setCapturedImage(imageUri);
@@ -104,20 +106,92 @@ export const CaptureScreen: React.FC = () => {
     if (!generatedProfile) return;
 
     try {
-      const success = await saveObjectProfile(generatedProfile);
+      setIsSaving(true);
+      
+      // Test Supabase connection first
+      const connectionTest = await testSupabaseConnection();
+      if (!connectionTest.success) {
+        Alert.alert(
+          'Connection Error',
+          `Supabase connection failed: ${connectionTest.message}`,
+          [
+            { text: 'Save Without Image', onPress: () => saveWithoutImage() },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+        return;
+      }
+      
+      // Show progress to user
+      Alert.alert(
+        'Uploading Image',
+        'Please wait while we upload your object\'s photo...',
+        [],
+        { cancelable: false }
+      );
+      
+      const success = await saveObjectProfile(generatedProfile, capturedImage);
       
       if (success) {
         Alert.alert(
           'Success! 🎉',
-          'Your object is now ready to find love!',
+          'Your object is now ready to find love! The photo has been uploaded and other users can now see it.',
           [{ text: 'Create Another', onPress: resetFlow }]
         );
       } else {
-        Alert.alert('Save Failed', 'Failed to save profile. Please try again.');
+        Alert.alert(
+          'Save Failed', 
+          'Failed to save profile or upload image. Please check your internet connection and try again.',
+          [
+            { text: 'Retry', onPress: handleSaveProfile },
+            { text: 'Save Without Image', onPress: saveWithoutImage },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
       }
     } catch (error) {
       console.error('Error saving profile:', error);
-      Alert.alert('Save Failed', 'Failed to save profile. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      Alert.alert(
+        'Save Failed', 
+        `Failed to save profile: ${errorMessage}`,
+        [
+          { text: 'Retry', onPress: handleSaveProfile },
+          { text: 'Save Without Image', onPress: saveWithoutImage },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const saveWithoutImage = async () => {
+    if (!generatedProfile) return;
+    
+    try {
+      setIsSaving(true);
+      const success = await saveObjectProfile(
+        generatedProfile, 
+        undefined, 
+        { allowImageUploadFailure: true }
+      );
+      
+      if (success) {
+        Alert.alert(
+          'Profile Saved! 📝',
+          'Your object profile has been saved (without image). You can add a photo later.',
+          [{ text: 'Create Another', onPress: resetFlow }]
+        );
+      } else {
+        Alert.alert('Save Failed', 'Failed to save profile. Please try again later.');
+      }
+    } catch (error) {
+      console.error('Error saving profile without image:', error);
+      Alert.alert('Save Failed', 'Failed to save profile. Please try again later.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -126,6 +200,7 @@ export const CaptureScreen: React.FC = () => {
     setObjectName('');
     setSelectedVibe('');
     setGeneratedProfile(null);
+    setIsSaving(false);
     setCurrentStep('camera');
   };
 
@@ -247,10 +322,57 @@ export const CaptureScreen: React.FC = () => {
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={styles.saveButton}
-                onPress={handleSaveProfile}
+                style={[styles.retryButton, { backgroundColor: '#333' }]}
+                onPress={async () => {
+                  try {
+                    Alert.alert(
+                      'Running Diagnostics...',
+                      'Please wait while we check your Supabase setup.',
+                      [],
+                      { cancelable: false }
+                    );
+                    
+                    const diagnostics = await runDetailedDiagnostics();
+                    
+                    Alert.alert(
+                      'Detailed Diagnostics',
+                      diagnostics,
+                      [
+                        { text: 'Copy to Clipboard', onPress: () => {
+                          // In a real app, you'd use Clipboard API
+                          console.log('DIAGNOSTICS REPORT:\n', diagnostics);
+                        }},
+                        { text: 'OK' }
+                      ]
+                    );
+                  } catch (error) {
+                    Alert.alert(
+                      'Diagnostics Failed',
+                      `Error running diagnostics: ${error}`,
+                      [{ text: 'OK' }]
+                    );
+                  }
+                }}
               >
-                <Text style={styles.saveButtonText}>Save Profile 💫</Text>
+                <Text style={styles.retryButtonText}>� Full Diagnostics</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[
+                  styles.saveButton,
+                  isSaving && styles.saveButtonDisabled
+                ]}
+                onPress={handleSaveProfile}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <ActivityIndicator size="small" color="white" style={{ marginRight: 8 }} />
+                    <Text style={styles.saveButtonText}>Uploading...</Text>
+                  </>
+                ) : (
+                  <Text style={styles.saveButtonText}>Save Profile 💫</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -380,16 +502,18 @@ const styles = StyleSheet.create({
   },
   previewActions: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 8,
     paddingTop: 16,
+    flexWrap: 'wrap',
   },
   retryButton: {
     flex: 1,
+    minWidth: 100,
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: APP_COLORS.primary,
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   retryButtonText: {
@@ -398,11 +522,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   saveButton: {
-    flex: 2,
+    width: '100%',
     backgroundColor: APP_COLORS.success,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
   },
   saveButtonText: {
     fontSize: 16,

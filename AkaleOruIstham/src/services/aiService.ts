@@ -7,12 +7,6 @@ import Constants from 'expo-constants';
 const OPENAI_API_KEY = Constants.expoConfig?.extra?.openaiApiKey || process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 const GEMINI_API_KEY = Constants.expoConfig?.extra?.geminiApiKey || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
-console.log('AI Service Configuration:', {
-  hasOpenAI: !!OPENAI_API_KEY,
-  hasGemini: !!GEMINI_API_KEY,
-  geminiKeyPrefix: GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + '...' : 'None'
-});
-
 export const generateObjectProfile = async (
   objectName: string,
   location: string,
@@ -30,10 +24,8 @@ export const generateObjectProfile = async (
     }
     
     // Ultimate fallback to mock data
-    console.warn('No AI API keys configured, using mock data');
     return generateMockProfile(objectName, location, vibe);
   } catch (error) {
-    console.error('AI generation failed, using mock data:', error);
     return generateMockProfile(objectName, location, vibe);
   }
 };
@@ -93,8 +85,6 @@ const generateWithGemini = async (
     .replace('{LOCATION}', location)
     .replace('{VIBE}', vibe)
     .replace('{CURRENT_TIME}', new Date().toLocaleString());
-
-  console.log('Using Gemini 2.0 Flash for AI generation...');
   
   const response = await fetch(`${AI_CONFIG.GEMINI.API_URL}/${AI_CONFIG.GEMINI.MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
     method: 'POST',
@@ -114,12 +104,10 @@ const generateWithGemini = async (
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Gemini API error:', response.status, errorText);
     throw new Error(`Gemini API error: ${response.statusText}`);
   }
 
   const data = await response.json();
-  console.log('Gemini response received:', JSON.stringify(data, null, 2));
   
   if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
     throw new Error('Invalid response format from Gemini API');
@@ -140,8 +128,6 @@ const generateWithGemini = async (
     aiResponse = content.text || content;
   }
   
-  console.log('Extracted AI response:', aiResponse);
-  
   if (!aiResponse) {
     throw new Error('No text content found in Gemini response');
   }
@@ -149,11 +135,8 @@ const generateWithGemini = async (
   try {
     // Clean up the response in case there are markdown code blocks
     const cleanResponse = aiResponse.replace(/```json\s*|\s*```/g, '').trim();
-    console.log('Cleaned response for parsing:', cleanResponse);
     
     const profile = JSON.parse(cleanResponse);
-    
-    console.log('Successfully parsed profile:', profile);
     
     return {
       ...profile,
@@ -163,11 +146,6 @@ const generateWithGemini = async (
     };
   } catch (parseError) {
     const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown error';
-    console.error('Failed to parse Gemini response:', {
-      error: parseError,
-      originalResponse: aiResponse,
-      responseType: typeof aiResponse
-    });
     throw new Error(`Failed to parse AI response as JSON: ${errorMessage}`);
   }
 };

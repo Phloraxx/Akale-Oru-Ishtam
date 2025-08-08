@@ -11,7 +11,7 @@
     "scheme": "akale-oru-istham",
     "splash": {
       "image": "./assets/favicon.png",
-      "resizeMode": "contain",
+      "resizeMode": "",
       "backgroundColor": "#FF6B6B"
     },
     "assetBundlePatterns": [

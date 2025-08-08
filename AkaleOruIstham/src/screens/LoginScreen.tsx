@@ -10,7 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../services/supabaseClient';
+import { supabase, runDetailedDiagnostics } from '../services/supabaseClient';
 import { APP_COLORS } from '../utils/constants';
 
 const { width, height } = Dimensions.get('window');
@@ -21,12 +21,9 @@ export const LoginScreen: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     try {
-      console.log('Google sign-in button pressed');
       setIsSigningIn(true);
       await signInWithGoogle();
-      console.log('Google sign-in successful');
     } catch (error: any) {
-      console.error('Authentication error:', error);
       Alert.alert(
         'Authentication Error',
         error.message || 'Failed to sign in with Google. Please try again.',
@@ -75,24 +72,6 @@ export const LoginScreen: React.FC = () => {
       {/* Main Content */}
       <View style={styles.content}>
 
-        <View style={styles.featuresContainer}>
-          <FeatureItem 
-            emoji="📸" 
-            text="Capture objects around you" 
-          />
-          <FeatureItem 
-            emoji="🤖" 
-            text="AI creates their dating profiles" 
-          />
-          <FeatureItem 
-            emoji="💫" 
-            text="Swipe through their stories" 
-          />
-          <FeatureItem 
-            emoji="❤️" 
-            text="Find connections everywhere" 
-          />
-        </View>
 
         {/* Login Section - moved inside content */}
         <View style={styles.loginSection}>
@@ -112,7 +91,7 @@ export const LoginScreen: React.FC = () => {
               <>
                 <Image
                   source={{
-                    uri: 'https://developers.google.com/identity/images/g-logo.png'
+                    uri: 'https://img.icons8.com/?size=512&id=V5cGWnc9R4xj&format=png'
                   }}
                   style={styles.googleIcon}
                 />
@@ -158,6 +137,39 @@ export const LoginScreen: React.FC = () => {
             }}
           >
             <Text style={styles.googleButtonText}>🔍 Check Status & Refresh</Text>
+          </TouchableOpacity>
+
+          {/* Detailed Diagnostics button */}
+          <TouchableOpacity
+            style={[styles.googleButton, { backgroundColor: '#FF6B35', marginTop: 8 }]}
+            onPress={async () => {
+              try {
+                Alert.alert(
+                  'Running Full Diagnostics...',
+                  'This will test all Supabase connections and storage setup.',
+                  [],
+                  { cancelable: false }
+                );
+                
+                const diagnostics = await runDetailedDiagnostics();
+                
+                Alert.alert(
+                  'Full Supabase Diagnostics',
+                  diagnostics,
+                  [
+                    { text: 'OK' }
+                  ]
+                );
+              } catch (error: any) {
+                Alert.alert(
+                  'Diagnostics Failed',
+                  `Error: ${error.message}`,
+                  [{ text: 'OK' }]
+                );
+              }
+            }}
+          >
+            <Text style={styles.googleButtonText}>🔧 Full Storage Diagnostics</Text>
           </TouchableOpacity>
 
           <Text style={styles.disclaimer}>
