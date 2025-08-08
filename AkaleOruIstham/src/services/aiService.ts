@@ -1,10 +1,17 @@
 import { ObjectProfile } from '../types/ObjectProfile';
 import { AI_PROMPT_TEMPLATE } from '../utils/prompts';
+import { AI_CONFIG } from '../utils/aiConfig';
 import Constants from 'expo-constants';
 
 // Read from environment variables
 const OPENAI_API_KEY = Constants.expoConfig?.extra?.openaiApiKey || process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 const GEMINI_API_KEY = Constants.expoConfig?.extra?.geminiApiKey || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+
+console.log('AI Service Configuration:', {
+  hasOpenAI: !!OPENAI_API_KEY,
+  hasGemini: !!GEMINI_API_KEY,
+  geminiKeyPrefix: GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + '...' : 'None'
+});
 
 export const generateObjectProfile = async (
   objectName: string,
@@ -12,14 +19,14 @@ export const generateObjectProfile = async (
   vibe: string
 ): Promise<ObjectProfile> => {
   try {
-    // Try OpenAI first if API key is available
-    if (OPENAI_API_KEY) {
-      return await generateWithOpenAI(objectName, location, vibe);
-    }
-    
-    // Fallback to Gemini if available
+    // Try Gemini first if API key is available (prioritizing the newer model)
     if (GEMINI_API_KEY) {
       return await generateWithGemini(objectName, location, vibe);
+    }
+    
+    // Fallback to OpenAI if available
+    if (OPENAI_API_KEY) {
+      return await generateWithOpenAI(objectName, location, vibe);
     }
     
     // Ultimate fallback to mock data
@@ -81,9 +88,88 @@ const generateWithGemini = async (
   location: string,
   vibe: string
 ): Promise<ObjectProfile> => {
-  // Implement Gemini API call similar to OpenAI
-  // For now, fallback to mock
-  return generateMockProfile(objectName, location, vibe);
+  const prompt = AI_PROMPT_TEMPLATE
+    .replace('{OBJECT_NAME}', objectName)
+    .replace('{LOCATION}', location)
+    .replace('{VIBE}', vibe)
+    .replace('{CURRENT_TIME}', new Date().toLocaleString());
+
+  console.log('Using Gemini 2.0 Flash for AI generation...');
+  
+  const response = await fetch(`${AI_CONFIG.GEMINI.API_URL}/${AI_CONFIG.GEMINI.MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{
+          text: prompt
+        }]
+      }],
+      generationConfig: AI_CONFIG.GEMINI.GENERATION_CONFIG,
+      safetySettings: AI_CONFIG.GEMINI.SAFETY_SETTINGS
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Gemini API error:', response.status, errorText);
+    throw new Error(`Gemini API error: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  console.log('Gemini response received:', JSON.stringify(data, null, 2));
+  
+  if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+    throw new Error('Invalid response format from Gemini API');
+  }
+  
+  // Handle the correct Gemini response structure
+  const content = data.candidates[0].content;
+  let aiResponse;
+  
+  if (Array.isArray(content)) {
+    // Content is an array of parts
+    aiResponse = content[0]?.text || content[0]?.parts?.[0]?.text;
+  } else if (content.parts && Array.isArray(content.parts)) {
+    // Content has parts array
+    aiResponse = content.parts[0]?.text;
+  } else {
+    // Direct text content
+    aiResponse = content.text || content;
+  }
+  
+  console.log('Extracted AI response:', aiResponse);
+  
+  if (!aiResponse) {
+    throw new Error('No text content found in Gemini response');
+  }
+  
+  try {
+    // Clean up the response in case there are markdown code blocks
+    const cleanResponse = aiResponse.replace(/```json\s*|\s*```/g, '').trim();
+    console.log('Cleaned response for parsing:', cleanResponse);
+    
+    const profile = JSON.parse(cleanResponse);
+    
+    console.log('Successfully parsed profile:', profile);
+    
+    return {
+      ...profile,
+      id: Math.random().toString(36).substr(2, 9),
+      createdAt: new Date(),
+      createdBy: 'anonymous',
+    };
+  } catch (parseError) {
+    const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown error';
+    console.error('Failed to parse Gemini response:', {
+      error: parseError,
+      originalResponse: aiResponse,
+      responseType: typeof aiResponse
+    });
+    throw new Error(`Failed to parse AI response as JSON: ${errorMessage}`);
+  }
 };
 
 const generateMockProfile = (

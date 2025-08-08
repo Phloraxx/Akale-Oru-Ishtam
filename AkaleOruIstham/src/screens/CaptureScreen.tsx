@@ -17,7 +17,7 @@ import { ObjectCard } from '../components/ObjectCard';
 import { generateObjectProfile } from '../services/aiService';
 import { getCurrentLocation, getRandomCampusLocation } from '../services/locationService';
 import { saveObjectProfile } from '../services/supabaseClient';
-import { ObjectCreationData, ObjectProfile } from '../types/ObjectProfile';
+import { ObjectProfile } from '../types/ObjectProfile';
 import { APP_COLORS } from '../utils/constants';
 
 type CaptureStep = 'camera' | 'naming' | 'vibe' | 'loading' | 'preview';
@@ -50,27 +50,29 @@ export const CaptureScreen: React.FC = () => {
       // Get location (using mock location for demo)
       const location = await getCurrentLocation() || getRandomCampusLocation();
       
-      const creationData: ObjectCreationData = {
+      const creationData = {
         objectName: objectName.trim(),
         location,
         vibe,
         imageUri: capturedImage
       };
 
-      // Generate profile using AI (using mock for demo)
-      const profileData = generateObjectProfile(creationData);
+      // Generate profile using AI
+      const profileData = await generateObjectProfile(
+        creationData.objectName,
+        creationData.location.description,
+        creationData.vibe
+      );
       
       // Simulate loading time
       await new Promise(resolve => setTimeout(resolve, 3000));
       
       if (profileData) {
         const fullProfile: ObjectProfile = {
-          id: Date.now().toString(),
           ...profileData,
+          id: Date.now().toString(),
           name: profileData.name || objectName,
-          age: profileData.age || 'Unknown age',
           bio: profileData.bio || 'A mysterious object with untold stories.',
-          anthem: profileData.anthem || { title: 'Good Vibes', artist: 'Various' },
           passions: profileData.passions || ['Existing', 'Being useful'],
           prompt: profileData.prompt || { 
             question: 'What makes you special?', 
@@ -232,7 +234,6 @@ export const CaptureScreen: React.FC = () => {
               {generatedProfile && (
                 <ObjectCard 
                   profile={generatedProfile}
-                  showActions={false}
                 />
               )}
             </View>

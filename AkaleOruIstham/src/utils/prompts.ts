@@ -1,5 +1,5 @@
 export const AI_PROMPT_TEMPLATE = `
-You are a witty, creative AI helping to create dating profiles for inanimate objects on a college campus. 
+You are a witty, creative AI helping to create dating profiles for inanimate objects on a college campus. Make all of the answers maximum 2 sentences.
 
 Create a dating profile for this object:
 - Object Name: {OBJECT_NAME}
@@ -10,11 +10,11 @@ Create a dating profile for this object:
 Return ONLY a valid JSON object with this exact structure:
 {
   "name": "the object name",
-  "bio": "a funny, charming bio (2-3 sentences max) that gives the object personality",
+  "bio": "a funny, charming bio (2 sentences max) that gives the object personality",
   "passions": ["passion1", "passion2", "passion3"],
   "prompt": {
     "question": "an interesting dating prompt question",
-    "answer": "a witty answer from the object's perspective"
+    "answer": "a witty answer from the object's perspective ( 2 sentences max )"
   },
   "vibe": "the requested vibe"
 }

@@ -74,12 +74,6 @@ export const LoginScreen: React.FC = () => {
 
       {/* Main Content */}
       <View style={styles.content}>
-        <View style={styles.illustrationContainer}>
-          <Text style={styles.illustration}>📱💕🪑</Text>
-          <Text style={styles.illustrationText}>
-            Discover the love stories of everyday objects
-          </Text>
-        </View>
 
         <View style={styles.featuresContainer}>
           <FeatureItem 

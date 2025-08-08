@@ -4,13 +4,13 @@
     "slug": "akale-oru-istham",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/favicon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "description": "A social discovery platform for lonely inanimate objects",
     "scheme": "akale-oru-istham",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/favicon.png",
       "resizeMode": "contain",
       "backgroundColor": "#FF6B6B"
     },
@@ -29,7 +29,7 @@
     "android": {
       "package": "com.akaleoru.istham",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/favicon.png",
         "backgroundColor": "#FF6B6B"
       },
       "edgeToEdgeEnabled": true,
