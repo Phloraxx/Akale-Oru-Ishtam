@@ -12,6 +12,7 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { CameraView } from '../components/CameraView';
+import { ImageSourceSelector } from '../components/ImageSourceSelector';
 import { VibeSelector } from '../components/VibeSelector';
 import { LoadingProfile } from '../components/LoadingProfile';
 import { ObjectCard } from '../components/ObjectCard';
@@ -22,10 +23,10 @@ import { ObjectProfile } from '../types/ObjectProfile';
 import { APP_COLORS } from '../utils/constants';
 import { useAuth } from '../contexts/AuthContext';
 
-type CaptureStep = 'camera' | 'naming' | 'vibe' | 'loading' | 'preview';
+type CaptureStep = 'imageSource' | 'camera' | 'naming' | 'vibe' | 'loading' | 'preview';
 
 export const CaptureScreen: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState<CaptureStep>('camera');
+  const [currentStep, setCurrentStep] = useState<CaptureStep>('imageSource');
   const [capturedImage, setCapturedImage] = useState<string>('');
   const [objectName, setObjectName] = useState<string>('');
   const [selectedVibe, setSelectedVibe] = useState<string>('');
@@ -46,6 +47,16 @@ export const CaptureScreen: React.FC = () => {
   );
 
   const handleImageCaptured = (imageUri: string) => {
+    setCapturedImage(imageUri);
+    setCurrentStep('naming');
+  };
+
+  const handleCameraSelected = () => {
+    setCurrentStep('camera');
+  };
+
+  const handleImageSelected = (imageUri: string) => {
+    console.log('📱 Image selected from gallery:', imageUri.substring(0, 50) + '...');
     setCapturedImage(imageUri);
     setCurrentStep('naming');
   };
@@ -211,16 +222,25 @@ export const CaptureScreen: React.FC = () => {
     setSelectedVibe('');
     setGeneratedProfile(null);
     setIsSaving(false);
-    setCurrentStep('camera');
+    setCurrentStep('imageSource');
   };
 
   const renderCurrentStep = () => {
     switch (currentStep) {
+      case 'imageSource':
+        return (
+          <ImageSourceSelector
+            onImageSelected={handleImageSelected}
+            onCameraSelected={handleCameraSelected}
+            onClose={resetFlow}
+          />
+        );
+
       case 'camera':
         return (
           <CameraView
             onImageCaptured={handleImageCaptured}
-            onClose={resetFlow}
+            onClose={() => setCurrentStep('imageSource')}
           />
         );
 
@@ -250,7 +270,7 @@ export const CaptureScreen: React.FC = () => {
               <View style={styles.buttonContainer}>
                 <TouchableOpacity 
                   style={styles.backButton}
-                  onPress={() => setCurrentStep('camera')}
+                  onPress={() => setCurrentStep('imageSource')}
                 >
                   <Text style={styles.backButtonText}>← Back</Text>
                 </TouchableOpacity>

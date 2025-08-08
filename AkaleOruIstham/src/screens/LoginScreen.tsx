@@ -48,7 +48,7 @@ export const LoginScreen: React.FC = () => {
       <View style={styles.header}>
         <View style={styles.logoContainer}>
           <Text style={styles.logoEmoji}>💝</Text>
-          <Text style={styles.appName}>Akale Oru Istham</Text>
+          <Text style={styles.appName}>Akale Oru Ishtam</Text>
           <Text style={styles.tagline}>Where objects find their soulmates</Text>
         </View>
       </View>

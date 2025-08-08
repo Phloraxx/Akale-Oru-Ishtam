@@ -9,7 +9,6 @@ import {
   Dimensions
 } from 'react-native';
 import { CameraView as ExpoCameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import * as ImagePicker from 'expo-image-picker';
 import { APP_COLORS } from '../utils/constants';
 
 interface CameraViewProps {
@@ -50,30 +49,6 @@ export const CameraView: React.FC<CameraViewProps> = ({
     }
   };
 
-  const pickImageFromGallery = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (status !== 'granted') {
-        Alert.alert('Permission required', 'We need access to your photo library to select images.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        setCapturedImage(result.assets[0].uri);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to select image. Please try again.');
-    }
-  };
-
   const retakePhoto = () => {
     setCapturedImage(null);
   };
@@ -102,11 +77,11 @@ export const CameraView: React.FC<CameraViewProps> = ({
         <Text style={styles.noPermissionText}>
           Camera access is required to capture objects
         </Text>
-        <TouchableOpacity style={styles.galleryButton} onPress={pickImageFromGallery}>
-          <Text style={styles.galleryButtonText}>Choose from Gallery</Text>
-        </TouchableOpacity>
+        <Text style={styles.noPermissionText}>
+          Please enable camera permission in your device settings, or go back to choose from gallery.
+        </Text>
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Text style={styles.closeButtonText}>Close</Text>
+          <Text style={styles.closeButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -152,12 +127,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
           </View>
 
           <View style={styles.bottomControls}>
-            <TouchableOpacity
-              style={styles.galleryButton}
-              onPress={pickImageFromGallery}
-            >
-              <Text style={styles.galleryButtonText}>Gallery</Text>
-            </TouchableOpacity>
+            <View style={styles.placeholder} />
 
             <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
               <View style={styles.captureButtonInner} />
@@ -252,17 +222,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 50,
     paddingHorizontal: 20,
-  },
-  galleryButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  galleryButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
   },
   captureButton: {
     width: 80,
