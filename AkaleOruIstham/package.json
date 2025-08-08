@@ -17,8 +17,10 @@
     "expo-auth-session": "^6.2.1",
     "expo-camera": "^16.1.11",
     "expo-crypto": "^14.1.5",
+    "expo-file-system": "^18.1.11",
     "expo-image-picker": "^16.1.4",
     "expo-location": "^18.1.6",
+    "expo-splash-screen": "~0.30.10",
     "expo-status-bar": "~2.2.3",
     "expo-web-browser": "^14.2.0",
     "react": "19.0.0",
@@ -28,8 +30,7 @@
     "react-native-gesture-handler": "~2.24.0",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
-    "react-native-vector-icons": "^10.3.0",
-    "expo-splash-screen": "~0.30.10"
+    "react-native-vector-icons": "^10.3.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

@@ -299,7 +299,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   return (
     <GestureHandlerRootView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Akale Oru Istham</Text>
+        <Text style={styles.headerTitle}>Akale Oru Ishtam</Text>
         <Text style={styles.headerSubtitle}>Discover objects waiting for love</Text>
         {user && (
           <TouchableOpacity 

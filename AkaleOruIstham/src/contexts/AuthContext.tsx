@@ -75,8 +75,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         redirectUrl = 'akale-oru-istham://auth';
       }
 
-      console.log('🔗 Using redirect URL:', redirectUrl);
-
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -89,7 +87,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       if (error) {
-        console.error('❌ OAuth setup error:', error);
         throw new Error(`OAuth setup failed: ${error.message}`);
       }
 
@@ -97,9 +94,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('No OAuth URL received from Supabase. Check your Google provider configuration in Supabase dashboard.');
       }
       
-      console.log('🚀 Opening OAuth URL:', data.url);
-      
-      // Open the OAuth URL with better error handling
+      // Open the OAuth URL
       const result = await WebBrowser.openAuthSessionAsync(
         data.url,
         redirectUrl,
@@ -107,8 +102,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           showInRecents: true,
         }
       );
-
-      console.log('📱 Auth session result:', result);
 
       if (result.type === 'success' && result.url) {
         // Parse tokens from the result URL
@@ -125,21 +118,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
 
         if (accessToken) {
-          console.log('✅ Tokens received, creating session...');
           const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken || '',
           });
 
           if (sessionError) {
-            console.error('❌ Session creation error:', sessionError);
             throw new Error(`Failed to create session: ${sessionError.message}`);
           }
           
           if (sessionData.session) {
             setSession(sessionData.session);
             setUser(sessionData.session.user);
-            console.log('🎉 Authentication successful!');
           }
         } else {
           throw new Error('Authentication completed but no tokens received');
@@ -147,11 +137,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else if (result.type === 'cancel') {
         throw new Error('Authentication was cancelled by user');
       } else {
-        console.error('❌ Authentication failed:', result);
         throw new Error(`Authentication failed with result: ${result.type}`);
       }
     } catch (error) {
-      console.error('🚨 Google Sign-In Error:', error);
       throw error;
     } finally {
       setLoading(false);
