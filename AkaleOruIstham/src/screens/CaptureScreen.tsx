@@ -14,7 +14,7 @@ import { CameraView } from '../components/CameraView';
 import { VibeSelector } from '../components/VibeSelector';
 import { LoadingProfile } from '../components/LoadingProfile';
 import { ObjectCard } from '../components/ObjectCard';
-import { generateMockProfile } from '../services/aiService';
+import { generateObjectProfile } from '../services/aiService';
 import { getCurrentLocation, getRandomCampusLocation } from '../services/locationService';
 import { saveObjectProfile } from '../services/supabaseClient';
 import { ObjectCreationData, ObjectProfile } from '../types/ObjectProfile';
@@ -58,7 +58,7 @@ export const CaptureScreen: React.FC = () => {
       };
 
       // Generate profile using AI (using mock for demo)
-      const profileData = generateMockProfile(creationData);
+      const profileData = generateObjectProfile(creationData);
       
       // Simulate loading time
       await new Promise(resolve => setTimeout(resolve, 3000));

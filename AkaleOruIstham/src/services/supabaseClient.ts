@@ -1,57 +1,46 @@
 import { createClient } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
+import { ObjectProfile } from '../types/ObjectProfile';
 
-// These should be moved to environment variables in production
-const SUPABASE_URL = 'https://your-project.supabase.co';
-const SUPABASE_ANON_KEY = 'your-anon-key';
+// Read from environment variables
+const SUPABASE_URL = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('Missing Supabase configuration. Please check your .env file.');
+}
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-export const uploadImage = async (uri: string, fileName: string): Promise<string | null> => {
+// Database operations
+export const saveObjectProfile = async (profile: ObjectProfile): Promise<boolean> => {
   try {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    
-    const { data, error } = await supabase.storage
-      .from('object-images')
-      .upload(fileName, blob);
-
-    if (error) {
-      console.error('Error uploading image:', error);
-      return null;
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('object-images')
-      .getPublicUrl(fileName);
-
-    return publicUrl;
-  } catch (error) {
-    console.error('Error uploading image:', error);
-    return null;
-  }
-};
-
-export const saveObjectProfile = async (profile: any): Promise<boolean> => {
-  try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('objects')
-      .insert([{
-        name: profile.name,
-        bio: profile.bio,
-        passions: profile.passions,
-        prompt_question: profile.prompt.question,
-        prompt_answer: profile.prompt.answer,
-        image_url: profile.imageUrl,
-        location_description: profile.location.description,
-        vibe: profile.vibe,
-        created_by: 'anonymous' // Replace with actual user ID when auth is implemented
-      }]);
+      .insert([
+        {
+          name: profile.name,
+          bio: profile.bio,
+          passions: profile.passions,
+          prompt: profile.prompt,
+          image_url: profile.imageUrl,
+          vibe: profile.vibe,
+          location: profile.location || {
+            latitude: 0,
+            longitude: 0,
+            description: 'Unknown location'
+          },
+          created_by: profile.createdBy,
+        },
+      ])
+      .select();
 
     if (error) {
       console.error('Error saving profile:', error);
       return false;
     }
 
+    console.log('Profile saved successfully:', data);
     return true;
   } catch (error) {
     console.error('Error saving profile:', error);
@@ -59,21 +48,41 @@ export const saveObjectProfile = async (profile: any): Promise<boolean> => {
   }
 };
 
-export const getObjectProfiles = async (): Promise<any[]> => {
+export const fetchObjectProfiles = async (limit: number = 20): Promise<ObjectProfile[]> => {
   try {
     const { data, error } = await supabase
       .from('objects')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
     if (error) {
       console.error('Error fetching profiles:', error);
       return [];
     }
 
-    return data || [];
+    // Transform database records to ObjectProfile format
+    return (data || []).map((record: any) => ({
+      id: record.id,
+      name: record.name,
+      bio: record.bio,
+      passions: record.passions || [],
+      prompt: record.prompt || { question: '', answer: '' },
+      imageUrl: record.image_url || '',
+      vibe: record.vibe || 'mysterious',
+      location: record.location || {
+        latitude: 0,
+        longitude: 0,
+        description: 'Unknown location'
+      },
+      createdAt: new Date(record.created_at),
+      createdBy: record.created_by || 'anonymous',
+    }));
   } catch (error) {
     console.error('Error fetching profiles:', error);
     return [];
   }
 };
+
+// Alias for backward compatibility
+export const getObjectProfiles = fetchObjectProfiles;

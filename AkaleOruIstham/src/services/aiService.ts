@@ -1,135 +1,136 @@
-import { ObjectProfile, ObjectCreationData } from '../types/ObjectProfile';
-import { generatePrompt } from '../utils/prompts';
+import { ObjectProfile } from '../types/ObjectProfile';
+import { AI_PROMPT_TEMPLATE } from '../utils/prompts';
+import Constants from 'expo-constants';
 
-// This should be moved to environment variables in production
-const OPENAI_API_KEY = 'your-openai-api-key';
+// Read from environment variables
+const OPENAI_API_KEY = Constants.expoConfig?.extra?.openaiApiKey || process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+const GEMINI_API_KEY = Constants.expoConfig?.extra?.geminiApiKey || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
 export const generateObjectProfile = async (
-  creationData: ObjectCreationData
-): Promise<Partial<ObjectProfile> | null> => {
+  objectName: string,
+  location: string,
+  vibe: string
+): Promise<ObjectProfile> => {
   try {
-    const prompt = generatePrompt(
-      creationData.objectName,
-      creationData.location.description,
-      creationData.vibe
-    );
-
-    // Using OpenAI API (you can replace with any other AI service)
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a witty AI that creates dating profiles for inanimate objects. Always respond with valid JSON only.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.8,
-        max_tokens: 500
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status}`);
+    // Try OpenAI first if API key is available
+    if (OPENAI_API_KEY) {
+      return await generateWithOpenAI(objectName, location, vibe);
     }
-
-    const data = await response.json();
-    const aiResponse = data.choices[0]?.message?.content;
-
-    if (!aiResponse) {
-      throw new Error('No response from AI');
+    
+    // Fallback to Gemini if available
+    if (GEMINI_API_KEY) {
+      return await generateWithGemini(objectName, location, vibe);
     }
-
-    // Parse the JSON response
-    const profileData = JSON.parse(aiResponse);
-
-    return {
-      name: profileData.name,
-      age: profileData.age,
-      bio: profileData.bio,
-      anthem: profileData.anthem,
-      passions: profileData.passions,
-      prompt: profileData.prompt,
-      imageUrl: creationData.imageUri,
-      location: creationData.location,
-      vibe: creationData.vibe,
-      createdAt: new Date(),
-      createdBy: 'anonymous' // Replace with actual user ID
-    };
-
+    
+    // Ultimate fallback to mock data
+    console.warn('No AI API keys configured, using mock data');
+    return generateMockProfile(objectName, location, vibe);
   } catch (error) {
-    console.error('Error generating profile:', error);
-    return null;
+    console.error('AI generation failed, using mock data:', error);
+    return generateMockProfile(objectName, location, vibe);
   }
 };
 
-// Mock function for development/testing when API key is not available
-export const generateMockProfile = (
-  creationData: ObjectCreationData
-): Partial<ObjectProfile> => {
-  const mockProfiles = {
-    'chair': {
-      name: 'Sitara the Supportive',
-      age: '5 years young',
-      bio: 'Been holding it down since 2019. Great at supporting others, literally. Looking for someone who appreciates stability and won\'t leave me hanging.',
-      anthem: {
-        title: 'Lean On Me',
-        artist: 'Bill Withers'
-      },
-      passions: ['Supporting dreams', 'People watching', 'Posture improvement', 'Silent comfort'],
-      prompt: {
-        question: 'What\'s your love language?',
-        answer: 'Physical touch - I\'m all about that support life 💺'
-      }
-    },
-    'book': {
-      name: 'Paige Turner',
-      age: 'Timeless',
-      bio: 'Full of stories and always ready to share. I\'ve got depth, plot twists, and a great cover. Swipe right if you\'re ready for an adventure between the lines.',
-      anthem: {
-        title: 'Story of My Life',
-        artist: 'One Direction'
-      },
-      passions: ['Character development', 'Plot twists', 'Late night reading', 'Bookmarks'],
-      prompt: {
-        question: 'What\'s your ideal Sunday?',
-        answer: 'Cozy corner, warm tea, and someone who reads me cover to cover 📚'
-      }
-    },
-    'default': {
-      name: `${creationData.objectName} the ${creationData.vibe}`,
-      age: 'Young at heart',
-      bio: `Living my best ${creationData.vibe} life at ${creationData.location.description}. Looking for someone who gets my vibe and won't judge my static lifestyle.`,
-      anthem: {
-        title: 'Good Vibes Only',
-        artist: 'Various Artists'
-      },
-      passions: ['Existing gracefully', 'Vibe checking', 'Being useful', 'Campus life'],
-      prompt: {
-        question: 'What makes you unique?',
-        answer: `I bring that ${creationData.vibe} energy wherever I go! ✨`
-      }
-    }
-  };
+const generateWithOpenAI = async (
+  objectName: string,
+  location: string,
+  vibe: string
+): Promise<ObjectProfile> => {
+  const prompt = AI_PROMPT_TEMPLATE
+    .replace('{OBJECT_NAME}', objectName)
+    .replace('{LOCATION}', location)
+    .replace('{VIBE}', vibe)
+    .replace('{CURRENT_TIME}', new Date().toLocaleString());
 
-  const profileKey = creationData.objectName.toLowerCase();
-  const selectedProfile = mockProfiles[profileKey as keyof typeof mockProfiles] || mockProfiles.default;
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 800,
+      temperature: 0.9,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI API error: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const aiResponse = data.choices[0].message.content;
+  
+  try {
+    const profile = JSON.parse(aiResponse);
+    return {
+      ...profile,
+      id: Math.random().toString(36).substr(2, 9),
+      createdAt: new Date(),
+      createdBy: 'anonymous',
+    };
+  } catch (parseError) {
+    throw new Error('Failed to parse AI response as JSON');
+  }
+};
+
+const generateWithGemini = async (
+  objectName: string,
+  location: string,
+  vibe: string
+): Promise<ObjectProfile> => {
+  // Implement Gemini API call similar to OpenAI
+  // For now, fallback to mock
+  return generateMockProfile(objectName, location, vibe);
+};
+
+const generateMockProfile = (
+  objectName: string,
+  location: string,
+  vibe: string
+): ObjectProfile => {
+  const mockBios = [
+    `Hey! I'm ${objectName}, a ${vibe} soul just vibing in ${location}. Looking for someone who appreciates the finer things in life... like existing.`,
+    `${objectName} here! Been ${vibe} lately and thought I'd give this dating thing a try. Found me at ${location} living my best inanimate life.`,
+    `Just a ${vibe} ${objectName} trying to find my person. Currently stationed at ${location} but willing to relocate for the right connection.`,
+  ];
+
+  const mockPassions = [
+    ['staying still', 'collecting dust', 'being useful'],
+    ['minimalism', 'vintage aesthetics', 'sustainability'],
+    ['campus life', 'late night study sessions', 'coffee culture'],
+    ['existential dread', 'people watching', 'silent conversations'],
+  ];
+
+  const mockAnthems = [
+    { title: 'Mr. Brightside', artist: 'The Killers' },
+    { title: 'Someone Like You', artist: 'Adele' },
+    { title: 'Shake It Off', artist: 'Taylor Swift' },
+    { title: 'Bohemian Rhapsody', artist: 'Queen' },
+  ];
+
+  const mockPrompts = [
+    { question: "What's your ideal first date?", answer: "Somewhere quiet where we can just... be." },
+    { question: "What's your biggest fear?", answer: "Being thrown away or forgotten." },
+    { question: "What makes you unique?", answer: "I've seen things... campus things." },
+  ];
 
   return {
-    ...selectedProfile,
-    imageUrl: creationData.imageUri,
-    location: creationData.location,
-    vibe: creationData.vibe,
+    id: Math.random().toString(36).substr(2, 9),
+    name: objectName,
+    bio: mockBios[Math.floor(Math.random() * mockBios.length)],
+    passions: mockPassions[Math.floor(Math.random() * mockPassions.length)],
+    prompt: mockPrompts[Math.floor(Math.random() * mockPrompts.length)],
+    imageUrl: '',
+    location: {
+      latitude: 12.9716,
+      longitude: 77.5946,
+      description: location,
+    },
+    vibe,
     createdAt: new Date(),
-    createdBy: 'anonymous'
+    createdBy: 'anonymous',
   };
 };
