@@ -60,7 +60,7 @@ For Software:
 
 ### Project Demo
 # Video
-[Add your demo video link here]
+[[Video LINK]](https://github.com/Phloraxx/Akale-Oru-Ishtam/blob/master/WhatsApp%20Video%202025-08-09%20at%2005.40.24_d4baf0b8.mp4)
 The user experience.
 
 ## Team Contributions
