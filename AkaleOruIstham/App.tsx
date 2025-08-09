@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -18,18 +19,25 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 // Constants
 import { APP_COLORS } from './src/utils/constants';
 
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
+
 const Stack = createStackNavigator();
 
 // Main navigation component that handles authenticated vs unauthenticated states
 const AppNavigator: React.FC = () => {
   const { user, loading } = useAuth();
 
+  useEffect(() => {
+    if (!loading) {
+      // Hide the splash screen once the auth state is determined
+      SplashScreen.hideAsync();
+    }
+  }, [loading]);
+
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={APP_COLORS.primary} />
-      </View>
-    );
+    // Keep showing splash screen while loading
+    return null;
   }
 
   return (
@@ -112,12 +120,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: APP_COLORS.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: APP_COLORS.background,
   },
 });

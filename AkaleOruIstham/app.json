@@ -1,25 +1,25 @@
 {
   "expo": {
-    "name": "Akale Oru Istham",
-    "slug": "akale-oru-istham",
+    "name": "Akale Oru Ishtam",
+    "slug": "akale-oru-ishtam",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/favicon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "description": "A social discovery platform for lonely inanimate objects",
-    "scheme": "akale-oru-istham",
+    "scheme": "akale-oru-ishtaam",
     "splash": {
       "image": "./assets/favicon.png",
-      "resizeMode": "splash",
-      "backgroundColor": "#FF6B6BBBB"
+      "resizeMode": "contain",
+      "backgroundColor": "#FF6B6B"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.akaleoru.istham",
+      "bundleIdentifier": "com.akaleoru.Ishtam",
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to camera to capture photos of objects for profile creation.",
         "NSLocationWhenInUseUsageDescription": "This app needs access to location to find objects near your campus location.",
@@ -27,7 +27,7 @@
       }
     },
     "android": {
-      "package": "com.akaleoru.istham",
+      "package": "com.akaleoru.Ishtam",
       "adaptiveIcon": {
         "foregroundImage": "./assets/favicon.png",
         "backgroundColor": "#FF6B6B"
@@ -37,7 +37,8 @@
         "android.permission.CAMERA",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.READ_EXTERNAL_STORAGE"
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -52,6 +53,12 @@
           "photosPermission": "The app accesses your photos to let you select images for object profiles."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ee230f5e-5024-41e7-b06d-def4de265639"
+      }
+    },
+    "owner": "phloraxx"
   }
 }
